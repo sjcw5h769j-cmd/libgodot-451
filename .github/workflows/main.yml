@@ -8,6 +8,18 @@ jobs:
     runs-on: macos-14
 
     steps:
+      - name: Free disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h
+
+          sudo rm -rf ~/Library/Developer/Xcode/DerivedData
+          sudo rm -rf ~/Library/Developer/CoreSimulator/Caches/*
+          sudo rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/*
+
+          echo "=== After cleanup ==="
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -23,7 +35,7 @@ jobs:
           which scons
           scons --version
 
-      - name: Patch host build for native Metal
+      - name: Patch host build for Metal
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -38,18 +50,66 @@ jobs:
               raise SystemExit("host_build_options line not found")
 
           p.write_text(s.replace(old, new, 1))
-          print("Patched host build: vulkan=no metal=yes")
+          print("Host build patched for Metal.")
           PY
 
-      - name: Build LibGodot
+      - name: Build host and update API
         run: |
-          chmod +x build_prebuilt_dev.sh
-          ./build_prebuilt_dev.sh
+          chmod +x build_libgodot.sh
+          ./build_libgodot.sh \
+            --no-target \
+            --host-rebuild \
+            --host-release \
+            --update-api
 
-      - name: Upload iOS frameworks
+      - name: Show disk space before iOS build
+        run: |
+          df -h
+
+      - name: Build iOS device
+        run: |
+          ./build_libgodot.sh --target ios --dev
+
+      - name: Clean unnecessary build data
+        run: |
+          df -h
+
+          rm -rf build/prebuilt
+          rm -rf build/android
+          rm -rf build/godot-cpp-android
+
+          df -h
+
+      - name: Build iOS simulator
+        run: |
+          ./build_libgodot.sh --target ios --simulator --dev
+
+      - name: Build iOS XCFramework
+        run: |
+          chmod +x build_libgodot_xcframework.sh
+          ./build_libgodot_xcframework.sh --target template_dev
+
+      - name: Build Godot CPP XCFramework
+        run: |
+          chmod +x build_godotcpp_xcframework.sh
+          ./build_godotcpp_xcframework.sh --target template_dev
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts
+
+          cp -R \
+            build/libgodot/dev/libgodot.xcframework \
+            artifacts/
+
+          cp -R \
+            build/godot-cpp/dev/libgodot-cpp.xcframework \
+            artifacts/
+
+          df -h
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: godot-4.5.1-ios-libgodot
-          path: |
-            build/libgodot/dev/libgodot.xcframework
-            build/godot-cpp/dev/libgodot-cpp.xcframework
+          path: artifacts/
