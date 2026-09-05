@@ -1,0 +1,30 @@
+name: Build Godot 4.5.1 iOS LibGodot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build LibGodot
+        run: |
+          chmod +x build_prebuilt_dev.sh
+          ./build_prebuilt_dev.sh
+
+      - name: Package iOS LibGodot
+        run: |
+          cd build/prebuilt/dev
+          zip -r ../../../libgodot-ios-4.5.1.zip libgodot.xcframework
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libgodot-ios-4.5.1
+          path: libgodot-ios-4.5.1.zip
