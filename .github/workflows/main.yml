@@ -13,6 +13,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install SCons
+        run: |
+          python3 -m pip install scons
+
       - name: Build LibGodot
         run: |
           chmod +x build_prebuilt_dev.sh
