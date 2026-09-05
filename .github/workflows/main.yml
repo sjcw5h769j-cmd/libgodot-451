@@ -15,7 +15,7 @@ jobs:
 
       - name: Install SCons
         run: |
-          python3 -m pip install scons
+          python3 -m pip install --user --break-system-packages scons
 
       - name: Build LibGodot
         run: |
