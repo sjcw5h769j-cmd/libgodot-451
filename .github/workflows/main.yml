@@ -16,6 +16,12 @@ jobs:
       - name: Install SCons
         run: |
           python3 -m pip install --user --break-system-packages scons
+          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+
+      - name: Check SCons
+        run: |
+          which scons
+          scons --version
 
       - name: Build LibGodot
         run: |
