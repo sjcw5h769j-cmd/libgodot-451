@@ -18,29 +18,38 @@ jobs:
           python3 -m pip install --user --break-system-packages scons
           echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
 
-      - name: Install MoltenVK
-        run: |
-          brew install molten-vk
-
-      - name: Check dependencies
+      - name: Check SCons
         run: |
           which scons
           scons --version
-          brew --prefix molten-vk
-          ls -l "$(brew --prefix molten-vk)/lib/libMoltenVK.dylib"
+
+      - name: Patch host build for native Metal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("build_libgodot.sh")
+          s = p.read_text()
+
+          old = 'host_build_options=""'
+          new = 'host_build_options="vulkan=no metal=yes"'
+
+          if old not in s:
+              raise SystemExit("host_build_options line not found")
+
+          p.write_text(s.replace(old, new, 1))
+          print("Patched host build: vulkan=no metal=yes")
+          PY
 
       - name: Build LibGodot
         run: |
           chmod +x build_prebuilt_dev.sh
           ./build_prebuilt_dev.sh
 
-      - name: Package iOS LibGodot
-        run: |
-          cd build/prebuilt/dev
-          zip -r ../../../libgodot-ios-4.5.1.zip libgodot.xcframework
-
-      - name: Upload artifact
+      - name: Upload iOS frameworks
         uses: actions/upload-artifact@v4
         with:
-          name: libgodot-ios-4.5.1
-          path: libgodot-ios-4.5.1.zip
+          name: godot-4.5.1-ios-libgodot
+          path: |
+            build/libgodot/dev/libgodot.xcframework
+            build/godot-cpp/dev/libgodot-cpp.xcframework
